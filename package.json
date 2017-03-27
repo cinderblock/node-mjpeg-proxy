@@ -14,7 +14,9 @@
   },
   "main": "./mjpeg-proxy",
   "dependencies": {
-    "buffertools": "^2.1.2"
+    "buffertools": "^2.1.2",
+    "mjpeg-consumer": "^1.1.0",
+    "stream-bandwidth": "0.0.2"
   },
   "devDependencies": {
     "express": "3.1.x"

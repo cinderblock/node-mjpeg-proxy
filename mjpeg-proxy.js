@@ -21,6 +21,7 @@
 
 var url = require('url');
 var http = require('http');
+var https = require('https');
 
 var buffertools = require('buffertools');
 var MjpegConsumer = require('mjpeg-consumer');
@@ -69,7 +70,7 @@ var MjpegProxy = exports.MjpegProxy = function(mjpegUrl) {
       self._newClient(req, res);
     } else {
       // Send source MJPEG request
-      self.mjpegRequest = http.request(self.mjpegOptions, function(mjpegResponse) {
+      self.mjpegRequest = (self.mjpegOptions.protocol == 'http:' ? http : https).request(self.mjpegOptions, function(mjpegResponse) {
         // console.log('request');
         self.globalMjpegResponse = mjpegResponse;
         self.boundary = extractBoundary(mjpegResponse.headers['content-type']);

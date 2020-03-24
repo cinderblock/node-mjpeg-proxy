@@ -12,6 +12,7 @@
     "type": "git",
     "url": "git://github.com/legege/node-mjpeg-proxy.git"
   },
+  "files": [],
   "main": "./mjpeg-proxy",
   "dependencies": {
     "mjpeg-consumer": "^2.0.0",

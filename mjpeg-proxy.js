@@ -31,16 +31,20 @@ function extractBoundary(contentType) {
 
   var startIndex = contentType.indexOf('boundary=');
   var endIndex = contentType.indexOf(';', startIndex);
-  if (endIndex == -1) { //boundary is the last option
+  //boundary is the last option
+  if (endIndex == -1) {
     // some servers, like mjpeg-streamer puts a '\r' character at the end of each line.
     if ((endIndex = contentType.indexOf('\r', startIndex)) == -1) {
       endIndex = contentType.length;
     }
   }
-  return contentType.substring(startIndex + 9, endIndex).replace(/"/gi,'').replace(/^\-\-/gi, '');
+  return contentType
+    .substring(startIndex + 9, endIndex)
+    .replace(/"/gi, '')
+    .replace(/^\-\-/gi, '');
 }
 
-var MjpegProxy = exports.MjpegProxy = function(mjpegUrl) {
+var MjpegProxy = (exports.MjpegProxy = function(mjpegUrl) {
   var self = this;
 
   if (!mjpegUrl) throw new Error('Please provide a source MJPEG URL');
@@ -53,14 +57,14 @@ var MjpegProxy = exports.MjpegProxy = function(mjpegUrl) {
   self.boundary = null;
   self.globalMjpegResponse = null;
   self.mjpegRequest = null;
-  
+
   self.latestFrame = null;
 
   self.bandwidth = null;
   self.latestBytesPerSec = null;
 
   self.proxyRequest = function(req, res) {
-    if (res.socket==null) {
+    if (res.socket == null) {
       return;
     }
 
@@ -69,7 +73,10 @@ var MjpegProxy = exports.MjpegProxy = function(mjpegUrl) {
       self._newClient(req, res);
     } else {
       // Send source MJPEG request
-      self.mjpegRequest = (self.mjpegOptions.protocol == 'http:' ? http : https).request(self.mjpegOptions, function(mjpegResponse) {
+      self.mjpegRequest = (self.mjpegOptions.protocol == 'http:'
+        ? http
+        : https
+      ).request(self.mjpegOptions, function(mjpegResponse) {
         // console.log('request');
         self.globalMjpegResponse = mjpegResponse;
         self.boundary = extractBoundary(mjpegResponse.headers['content-type']);
@@ -78,7 +85,7 @@ var MjpegProxy = exports.MjpegProxy = function(mjpegUrl) {
 
         var lastByte1 = null;
         var lastByte2 = null;
-        
+
         var consumer = new MjpegConsumer();
 
         self.bandwidth = new Bandwidth();
@@ -87,9 +94,12 @@ var MjpegProxy = exports.MjpegProxy = function(mjpegUrl) {
           self.latestBytesPerSec = data.bytes;
         });
 
-        mjpegResponse.pipe(self.bandwidth).pipe(consumer).on('data', function(img) {
-          self.latestFrame = img;
-        });
+        mjpegResponse
+          .pipe(self.bandwidth)
+          .pipe(consumer)
+          .on('data', function(img) {
+            self.latestFrame = img;
+          });
 
         mjpegResponse.on('data', function(chunk) {
           // Fix CRLF issue on iOS 6+: boundary should be preceded by CRLF.
@@ -97,7 +107,10 @@ var MjpegProxy = exports.MjpegProxy = function(mjpegUrl) {
             var oldheader = '--' + self.boundary;
             var p = chunk.indexOf(oldheader);
 
-            if (p == 0 && !(lastByte2 == 0x0d && lastByte1 == 0x0a) || p > 1 && !(chunk[p - 2] == 0x0d && chunk[p - 1] == 0x0a)) {
+            if (
+              (p == 0 && !(lastByte2 == 0x0d && lastByte1 == 0x0a)) ||
+              (p > 1 && !(chunk[p - 2] == 0x0d && chunk[p - 1] == 0x0a))
+            ) {
               var b1 = chunk.slice(0, p);
               var b2 = new Buffer('\r\n--' + self.boundary);
               var b3 = chunk.slice(p + oldheader.length);
@@ -108,7 +121,7 @@ var MjpegProxy = exports.MjpegProxy = function(mjpegUrl) {
           lastByte1 = chunk[chunk.length - 1];
           lastByte2 = chunk[chunk.length - 2];
 
-          for (var i = self.audienceResponses.length; i--;) {
+          for (var i = self.audienceResponses.length; i--; ) {
             var res = self.audienceResponses[i];
 
             // First time we push data... lets start at a boundary
@@ -116,21 +129,25 @@ var MjpegProxy = exports.MjpegProxy = function(mjpegUrl) {
               var p = chunk.indexOf('--' + self.boundary);
               if (p >= 0) {
                 res.write(chunk.slice(p));
-                self.newAudienceResponses.splice(self.newAudienceResponses.indexOf(res), 1); // remove from new
+                // remove from new
+                self.newAudienceResponses.splice(
+                  self.newAudienceResponses.indexOf(res),
+                  1
+                );
               }
             } else {
               res.write(chunk);
             }
           }
         });
-        mjpegResponse.on('end', function () {
+        mjpegResponse.on('end', function() {
           // console.log("...end");
-          for (var i = self.audienceResponses.length; i--;) {
+          for (var i = self.audienceResponses.length; i--; ) {
             var res = self.audienceResponses[i];
             res.end();
           }
         });
-        mjpegResponse.on('close', function () {
+        mjpegResponse.on('close', function() {
           // console.log("...close");
         });
       });
@@ -140,35 +157,39 @@ var MjpegProxy = exports.MjpegProxy = function(mjpegUrl) {
       });
       self.mjpegRequest.end();
     }
-  }
-  
+  };
+
   self.snapshot = function(req, res) {
     res.writeHead(200, {
-      'Expires': 'Mon, 01 Jul 1980 00:00:00 GMT',
+      Expires: 'Mon, 01 Jul 1980 00:00:00 GMT',
       'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Content-Type': 'image/jpeg',
+      Pragma: 'no-cache',
+      'Content-Type': 'image/jpeg'
     });
     res.end(self.latestFrame);
   };
 
   self._newClient = function(req, res) {
     res.writeHead(200, {
-      'Expires': 'Mon, 01 Jul 1980 00:00:00 GMT',
+      Expires: 'Mon, 01 Jul 1980 00:00:00 GMT',
       'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
+      Pragma: 'no-cache',
       'Content-Type': 'multipart/x-mixed-replace;boundary=' + self.boundary
     });
 
     self.audienceResponses.push(res);
     self.newAudienceResponses.push(res);
 
-    res.socket.on('close', function () {
+    res.socket.on('close', function() {
       // console.log('exiting client!');
 
       self.audienceResponses.splice(self.audienceResponses.indexOf(res), 1);
       if (self.newAudienceResponses.indexOf(res) >= 0) {
-        self.newAudienceResponses.splice(self.newAudienceResponses.indexOf(res), 1); // remove from new
+        // remove from new
+        self.newAudienceResponses.splice(
+          self.newAudienceResponses.indexOf(res),
+          1
+        );
       }
 
       if (self.audienceResponses.length == 0) {
@@ -176,5 +197,5 @@ var MjpegProxy = exports.MjpegProxy = function(mjpegUrl) {
         self.globalMjpegResponse.destroy();
       }
     });
-  }
-}
+  };
+});
